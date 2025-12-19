@@ -1,47 +1,48 @@
 // api/tipo-cambio.js
-// Serverless function para Vercel - Proxy a API del BCH
+// Serverless function para Vercel Edge Runtime
 
-// ===================================
-// CONFIGURACIÓN
-// ===================================
 const BCH_CONFIG = {
   API_URL: 'https://bchapi-am.azure-api.net/api/v1/indicadores/97/cifras',
   API_KEY: process.env.BCH_API_KEY,
-  TIMEOUT: 10000 // 10 segundos
+  TIMEOUT: 10000
 };
 
-// ===================================
-// HANDLER PRINCIPAL
-// ===================================
-export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  // Cache control (1 hora)
-  res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
-
-  // Manejar preflight OPTIONS
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
+export default async function handler(req) {
   // Solo permitir GET
-  if (req.method !== 'GET') {
-    return res.status(405).json({ 
-      error: 'Method not allowed',
-      allowedMethods: ['GET']
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
     });
   }
 
+  if (req.method !== 'GET') {
+    return new Response(
+      JSON.stringify({ 
+        error: 'Method not allowed',
+        allowedMethods: ['GET']
+      }), 
+      {
+        status: 405,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    );
+  }
+
   try {
-    // Validar que exista la API Key
+    // Validar API Key
     if (!BCH_CONFIG.API_KEY) {
-      throw new Error('BCH_API_KEY no está configurada en las variables de entorno');
+      throw new Error('BCH_API_KEY no está configurada');
     }
 
-    // Construir URL con parámetros
+    // Construir URL
     const url = new URL(BCH_CONFIG.API_URL);
     url.searchParams.append('reciente', '1');
     url.searchParams.append('formato', 'json');
@@ -63,76 +64,70 @@ export default async function handler(req, res) {
 
     clearTimeout(timeoutId);
 
-    // Verificar respuesta HTTP
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`BCH API HTTP ${response.status}: ${errorText}`);
     }
 
-    // Parsear JSON
     const data = await response.json();
 
-    // Validar estructura de datos
+    // Validar datos
     if (!Array.isArray(data) || data.length === 0) {
       throw new Error('Invalid data structure from BCH API');
     }
 
-    // Validar campos requeridos
     const item = data[0];
     if (!item.Valor || !item.Fecha) {
-      throw new Error('Missing required fields (Valor or Fecha)');
+      throw new Error('Missing required fields');
     }
 
-    // Validar que el valor sea número
     if (typeof item.Valor !== 'number' || item.Valor <= 0) {
-      throw new Error('Invalid Valor from BCH API');
+      throw new Error('Invalid Valor');
     }
 
-    // Log exitoso (solo en desarrollo)
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ Tipo de cambio obtenido:', {
-        valor: item.Valor,
-        fecha: item.Fecha
-      });
-    }
-
-    // Retornar datos con metadata adicional
-    return res.status(200).json(data);
-
-  } catch (error) {
-    // Log de error (siempre)
-    console.error('❌ Error en /api/tipo-cambio:', {
-      message: error.message,
-      name: error.name,
-      timestamp: new Date().toISOString()
+    // Retornar respuesta exitosa
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 's-maxage=3600, stale-while-revalidate'
+      }
     });
 
-    // Determinar código de estado apropiado
+  } catch (error) {
+    console.error('❌ Error en /api/tipo-cambio:', error.message);
+
     let statusCode = 500;
     let errorMessage = 'Error al obtener tipo de cambio del BCH';
 
     if (error.name === 'AbortError') {
       statusCode = 504;
-      errorMessage = 'Timeout: BCH API no respondió a tiempo';
+      errorMessage = 'Timeout: BCH API no respondió';
     } else if (error.message.includes('fetch failed')) {
       statusCode = 503;
       errorMessage = 'No se pudo conectar con el BCH';
     }
 
-    // Retornar error estructurado
-    return res.status(statusCode).json({
-      error: errorMessage,
-      details: process.env.NODE_ENV !== 'production' ? error.message : undefined,
-      timestamp: new Date().toISOString(),
-      status: statusCode
-    });
+    return new Response(
+      JSON.stringify({
+        error: errorMessage,
+        details: error.message,
+        timestamp: new Date().toISOString(),
+        status: statusCode
+      }),
+      {
+        status: statusCode,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      }
+    );
   }
 }
 
-// ===================================
-// CONFIGURACIÓN DE VERCEL
-// ===================================
 export const config = {
-  runtime: 'edge', // Usar Edge Runtime (más rápido)
-  regions: ['iad1'], // US East (más cerca de Honduras)
+  runtime: 'edge',
+  regions: ['iad1']
 };

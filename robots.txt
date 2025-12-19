@@ -1,0 +1,75 @@
+# robots.txt para DolarLempira.com
+# Optimizado para SEO Honduras - Tipo de Cambio Dólar Lempira
+
+# Permitir todos los bots principales
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /politicas.html
+
+# Bloquear carpetas y archivos innecesarios
+Disallow: /api/
+Disallow: *.json$
+Disallow: /js/
+Disallow: /css/
+
+# Permitir explícitamente archivos estáticos importantes
+Allow: /css/styles.css
+Allow: /js/script.js
+
+# Crawl-delay para bots agresivos (evitar sobrecarga)
+User-agent: *
+Crawl-delay: 1
+
+# Google Bot - Sin restricciones (máxima prioridad)
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Googlebot-Image
+Allow: /
+
+# Bing Bot
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Yandex Bot
+User-agent: Yandex
+Allow: /
+Crawl-delay: 2
+
+# Baidu (China)
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 2
+
+# DuckDuckGo
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 1
+
+# Bloquear bots maliciosos y scrapers agresivos
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: DataForSeoBot
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
+
+# Sitemap
+Sitemap: https://dolarlempira.com/sitemap.xml

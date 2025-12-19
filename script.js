@@ -2,20 +2,20 @@
 // CONFIGURACIÓN
 // ===================================
 const CONFIG = {
-    API_URL: '/api/tipo-cambio', // Para Vercel
+    API_URL: '/api/tipo-cambio',
     CACHE_KEY: 'dolarlempira_cache',
     CACHE_DURATION: 3600000, // 1 hora
-    DEBUG: false // Cambiar a true solo para desarrollo
+    DEBUG: false
 };
 
 let tasaCambio = null;
 let fechaTasa = null;
 
-// Helper para logs solo en desarrollo
+// Helper para logs
 const log = {
     info: (...args) => CONFIG.DEBUG && console.log(...args),
     warn: (...args) => CONFIG.DEBUG && console.warn(...args),
-    error: (...args) => console.error(...args) // Errores siempre se muestran
+    error: (...args) => console.error(...args)
 };
 
 // ===================================
@@ -30,6 +30,9 @@ async function init() {
     await cargarTipoCambio();
     generarTablaConversiones();
     actualizarFechaHero();
+    
+    // ✅ Establecer valor inicial DESPUÉS de cargar la tasa
+    inicializarConversor();
 }
 
 // ===================================
@@ -89,7 +92,6 @@ async function cargarTipoCambio() {
 // MANEJO DE ERRORES
 // ===================================
 function manejarError(error) {
-    // Intentar usar cache aunque esté expirado
     const cached = getCacheExpired();
     
     if (cached) {
@@ -101,7 +103,6 @@ function manejarError(error) {
         return;
     }
     
-    // No hay datos disponibles - mostrar error
     mostrarErrorCompleto('No se pudo cargar el tipo de cambio. Por favor, intenta más tarde.');
     log.error('❌ Sin datos disponibles (no hay cache ni conexión)');
 }
@@ -160,7 +161,7 @@ function actualizarUI(data) {
     const fechaEl = document.getElementById('fechaActualizacion');
     
     if (tasaEl) {
-        tasaEl.textContent = `L ${formatNumber(data.valor)}`;
+        tasaEl.textContent = `L ${formatNumber(data.valor, 2)}`;
     }
     
     if (fechaEl) {
@@ -174,9 +175,10 @@ function actualizarUI(data) {
         fechaEl.textContent = fecha.toLocaleDateString('es-HN', opciones);
     }
     
-    // Actualizar tabla después de tener la tasa
+    // Actualizar tabla y conversor después de tener la tasa
     if (tasaCambio) {
         generarTablaConversiones();
+        inicializarConversor();
     }
     
     ocultarLoading();
@@ -208,10 +210,8 @@ function ocultarLoading() {
 }
 
 function mostrarAdvertencia(mensaje) {
-    // Notificación visual discreta
     const tasaCard = document.querySelector('.tasa-card');
     if (tasaCard) {
-        // Verificar si ya existe una advertencia
         const existente = tasaCard.querySelector('.aviso-offline');
         if (existente) return;
         
@@ -232,7 +232,6 @@ function mostrarAdvertencia(mensaje) {
         aviso.textContent = '⚠️ Sin conexión';
         aviso.title = mensaje;
         
-        // Remover después de 5 segundos
         setTimeout(() => aviso.remove(), 5000);
         
         tasaCard.style.position = 'relative';
@@ -254,7 +253,6 @@ function mostrarErrorCompleto(mensaje) {
         fechaEl.textContent = 'No disponible';
     }
     
-    // Mostrar mensaje en el conversor
     if (conversorCard) {
         const errorMsg = document.createElement('div');
         errorMsg.style.cssText = `
@@ -277,7 +275,6 @@ function mostrarErrorCompleto(mensaje) {
         conversorCard.insertBefore(errorMsg, conversorCard.firstChild);
     }
     
-    // Deshabilitar inputs
     const inputUSD = document.getElementById('cantidadUSD');
     const inputHNL = document.getElementById('cantidadHNL');
     const btnSwap = document.getElementById('btnInvertir');
@@ -301,6 +298,22 @@ function hnlToUsd(hnl) {
 }
 
 // ===================================
+// INICIALIZAR CONVERSOR
+// ===================================
+function inicializarConversor() {
+    const inputUSD = document.getElementById('cantidadUSD');
+    const inputHNL = document.getElementById('cantidadHNL');
+    
+    if (inputUSD && inputHNL && tasaCambio) {
+        // Establecer valor inicial de 100 USD
+        inputUSD.value = '100';
+        const hnl = usdToHnl(100);
+        inputHNL.value = formatNumber(hnl, 2);
+        log.info('✅ Conversor inicializado con $100');
+    }
+}
+
+// ===================================
 // EVENT LISTENERS
 // ===================================
 function setupEventListeners() {
@@ -310,44 +323,56 @@ function setupEventListeners() {
     
     if (inputUSD) {
         inputUSD.addEventListener('input', (e) => {
-            const valor = parseFloat(e.target.value) || 0;
+            // Remover formato para obtener valor numérico
+            const valorStr = e.target.value.replace(/,/g, '');
+            const valor = parseFloat(valorStr) || 0;
+            
             if (inputHNL && tasaCambio) {
-                inputHNL.value = valor > 0 ? formatNumber(usdToHnl(valor)) : '';
+                if (valor > 0) {
+                    const hnl = usdToHnl(valor);
+                    inputHNL.value = formatNumber(hnl, 2);
+                } else {
+                    inputHNL.value = '';
+                }
             }
         });
-        
-        // Agregar valor inicial
-        inputUSD.value = '100';
-        inputUSD.dispatchEvent(new Event('input'));
     }
     
     if (inputHNL) {
         inputHNL.addEventListener('input', (e) => {
+            // Remover formato para obtener valor numérico
             const valorStr = e.target.value.replace(/,/g, '');
             const valor = parseFloat(valorStr) || 0;
+            
             if (inputUSD && tasaCambio) {
-                inputUSD.value = valor > 0 ? formatNumber(hnlToUsd(valor), 2) : '';
+                if (valor > 0) {
+                    const usd = hnlToUsd(valor);
+                    inputUSD.value = formatNumber(usd, 2);
+                } else {
+                    inputUSD.value = '';
+                }
             }
         });
     }
     
     if (btnSwap) {
         btnSwap.addEventListener('click', () => {
-            if (inputUSD && inputHNL) {
-                const tempUSD = inputUSD.value;
-                const tempHNL = inputHNL.value;
+            if (inputUSD && inputHNL && tasaCambio) {
+                // Obtener valores sin formato
+                const valorUSD = parseFloat(inputUSD.value.replace(/,/g, '')) || 0;
+                const valorHNL = parseFloat(inputHNL.value.replace(/,/g, '')) || 0;
                 
-                // Intercambiar valores
-                inputHNL.value = tempUSD;
-                inputUSD.value = tempHNL;
-                
-                // Trigger conversion desde HNL
-                inputHNL.dispatchEvent(new Event('input'));
+                if (valorUSD > 0 || valorHNL > 0) {
+                    // Intercambiar: el valor de HNL pasa a USD y se recalcula
+                    inputUSD.value = formatNumber(valorHNL, 2);
+                    const nuevoHNL = usdToHnl(valorHNL);
+                    inputHNL.value = formatNumber(nuevoHNL, 2);
+                }
             }
         });
     }
     
-    // Smooth scroll para enlaces internos
+    // Smooth scroll
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
@@ -402,16 +427,14 @@ function formatNumber(num, decimales = 2) {
 // ===================================
 // AUTO-REFRESH
 // ===================================
-// Recargar cada 30 minutos
 setInterval(() => {
     log.info('🔄 Auto-refresh: Recargando tipo de cambio...');
     cargarTipoCambio();
-}, 1800000);
+}, 1800000); // 30 minutos
 
 // ===================================
 // DETECCIÓN DE VISIBILIDAD
 // ===================================
-// Recargar cuando la página vuelve a estar visible
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
         const cached = getCache();

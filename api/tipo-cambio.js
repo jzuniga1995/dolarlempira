@@ -8,31 +8,21 @@ const BCH_CONFIG = {
 };
 
 export default async function handler(req) {
-  // Solo permitir GET
+  // CORS headers
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Cache-Control': 's-maxage=3600, stale-while-revalidate'
+  };
+
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      }
-    });
+    return new Response(null, { status: 200, headers });
   }
 
   if (req.method !== 'GET') {
     return new Response(
-      JSON.stringify({ 
-        error: 'Method not allowed',
-        allowedMethods: ['GET']
-      }), 
-      {
-        status: 405,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
-      }
+      JSON.stringify({ error: 'Method not allowed' }), 
+      { status: 405, headers }
     );
   }
 
@@ -44,9 +34,8 @@ export default async function handler(req) {
 
     // Construir URL
     const url = new URL(BCH_CONFIG.API_URL);
+    url.searchParams.append('formato', 'Json');
     url.searchParams.append('reciente', '1');
-    url.searchParams.append('formato', 'json');
-    url.searchParams.append('ordenamiento', 'desc');
 
     // Fetch con timeout
     const controller = new AbortController();
@@ -55,9 +44,9 @@ export default async function handler(req) {
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: {
-        'Ocp-Apim-Subscription-Key': BCH_CONFIG.API_KEY,
+        'clave': BCH_CONFIG.API_KEY,  // ← ESTE ES EL CAMBIO CLAVE
         'Content-Type': 'application/json',
-        'User-Agent': 'DolarLempira.com/1.0'
+        'Cache-Control': 'no-cache'
       },
       signal: controller.signal
     });
@@ -85,14 +74,12 @@ export default async function handler(req) {
       throw new Error('Invalid Valor');
     }
 
+    console.log('✅ Tipo de cambio obtenido:', item.Valor);
+
     // Retornar respuesta exitosa
     return new Response(JSON.stringify(data), {
       status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 's-maxage=3600, stale-while-revalidate'
-      }
+      headers
     });
 
   } catch (error) {
@@ -118,10 +105,7 @@ export default async function handler(req) {
       }),
       {
         status: statusCode,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        }
+        headers
       }
     );
   }

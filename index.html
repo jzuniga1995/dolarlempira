@@ -160,42 +160,42 @@
                 <div class="tasa-fuente">Fuente: BCH</div>
             </div>
 
-            <!-- Conversor -->
-            <div class="conversor-card">
-                <div class="conversor-row">
-                    <div class="input-group">
-                        <label>Dólares</label>
-                        <div class="input-box">
-                            <span class="currency">USD</span>
-                            <input 
-                                type="number" 
-                                id="cantidadUSD" 
-                                placeholder="100"
-                                step="0.01"
-                                min="0"
-                            >
-                        </div>
-                    </div>
-
-                    <button class="btn-swap" id="btnInvertir" title="Invertir">
-                        ⇄
-                    </button>
-
-                    <div class="input-group">
-                        <label>Lempiras</label>
-                        <div class="input-box">
-                            <span class="currency">HNL</span>
-                            <input 
-                                type="number" 
-                                id="cantidadHNL" 
-                                placeholder="2,634.13"
-                                step="0.01"
-                                min="0"
-                            >
-                        </div>
-                    </div>
-                </div>
+          <!-- Conversor -->
+<div class="conversor-card">
+    <div class="conversor-row">
+        <div class="input-group">
+            <label>Dólares</label>
+            <div class="input-box">
+                <span class="currency">USD</span>
+                <input 
+                    type="text" 
+                    id="cantidadUSD" 
+                    placeholder="100"
+                    inputmode="decimal"
+                    autocomplete="off"
+                >
             </div>
+        </div>
+
+        <button class="btn-swap" id="btnInvertir" title="Invertir">
+            ⇄
+        </button>
+
+        <div class="input-group">
+            <label>Lempiras</label>
+            <div class="input-box">
+                <span class="currency">HNL</span>
+                <input 
+                    type="text" 
+                    id="cantidadHNL" 
+                    placeholder="2,634.13"
+                    inputmode="decimal"
+                    autocomplete="off"
+                >
+            </div>
+        </div>
+    </div>
+</div>
 
             <!-- Tabla Simple -->
             <div class="tabla-card">

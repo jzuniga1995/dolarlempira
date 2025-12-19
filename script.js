@@ -298,6 +298,20 @@ function hnlToUsd(hnl) {
 }
 
 // ===================================
+// LIMPIAR INPUT (solo números y punto)
+// ===================================
+function limpiarValor(valor) {
+    // Remover todo excepto números, punto y comas
+    return valor.replace(/[^\d.,]/g, '').replace(/,/g, '');
+}
+
+function extraerNumero(valor) {
+    const limpio = limpiarValor(valor);
+    const numero = parseFloat(limpio);
+    return isNaN(numero) ? 0 : numero;
+}
+
+// ===================================
 // INICIALIZAR CONVERSOR
 // ===================================
 function inicializarConversor() {
@@ -323,51 +337,83 @@ function setupEventListeners() {
     
     if (inputUSD) {
         inputUSD.addEventListener('input', (e) => {
-            // Remover formato para obtener valor numérico
-            const valorStr = e.target.value.replace(/,/g, '');
-            const valor = parseFloat(valorStr) || 0;
+            if (!inputHNL || !tasaCambio) return;
             
-            if (inputHNL && tasaCambio) {
-                if (valor > 0) {
-                    const hnl = usdToHnl(valor);
-                    inputHNL.value = formatNumber(hnl, 2);
-                } else {
-                    inputHNL.value = '';
-                }
+            const valor = extraerNumero(e.target.value);
+            
+            if (valor > 0) {
+                const hnl = usdToHnl(valor);
+                inputHNL.value = formatNumber(hnl, 2);
+            } else {
+                inputHNL.value = '';
+            }
+        });
+        
+        // Formatear al salir del campo
+        inputUSD.addEventListener('blur', (e) => {
+            const valor = extraerNumero(e.target.value);
+            if (valor > 0) {
+                e.target.value = formatNumber(valor, 2);
+            }
+        });
+        
+        // Permitir edición sin formato
+        inputUSD.addEventListener('focus', (e) => {
+            const valor = extraerNumero(e.target.value);
+            if (valor > 0) {
+                e.target.value = valor.toString();
             }
         });
     }
     
     if (inputHNL) {
         inputHNL.addEventListener('input', (e) => {
-            // Remover formato para obtener valor numérico
-            const valorStr = e.target.value.replace(/,/g, '');
-            const valor = parseFloat(valorStr) || 0;
+            if (!inputUSD || !tasaCambio) return;
             
-            if (inputUSD && tasaCambio) {
-                if (valor > 0) {
-                    const usd = hnlToUsd(valor);
-                    inputUSD.value = formatNumber(usd, 2);
-                } else {
-                    inputUSD.value = '';
-                }
+            const valor = extraerNumero(e.target.value);
+            
+            if (valor > 0) {
+                const usd = hnlToUsd(valor);
+                inputUSD.value = formatNumber(usd, 2);
+            } else {
+                inputUSD.value = '';
+            }
+        });
+        
+        // Formatear al salir del campo
+        inputHNL.addEventListener('blur', (e) => {
+            const valor = extraerNumero(e.target.value);
+            if (valor > 0) {
+                e.target.value = formatNumber(valor, 2);
+            }
+        });
+        
+        // Permitir edición sin formato
+        inputHNL.addEventListener('focus', (e) => {
+            const valor = extraerNumero(e.target.value);
+            if (valor > 0) {
+                e.target.value = valor.toString();
             }
         });
     }
     
     if (btnSwap) {
         btnSwap.addEventListener('click', () => {
-            if (inputUSD && inputHNL && tasaCambio) {
-                // Obtener valores sin formato
-                const valorUSD = parseFloat(inputUSD.value.replace(/,/g, '')) || 0;
-                const valorHNL = parseFloat(inputHNL.value.replace(/,/g, '')) || 0;
-                
-                if (valorUSD > 0 || valorHNL > 0) {
-                    // Intercambiar: el valor de HNL pasa a USD y se recalcula
-                    inputUSD.value = formatNumber(valorHNL, 2);
-                    const nuevoHNL = usdToHnl(valorHNL);
-                    inputHNL.value = formatNumber(nuevoHNL, 2);
-                }
+            if (!inputUSD || !inputHNL || !tasaCambio) return;
+            
+            const valorUSD = extraerNumero(inputUSD.value);
+            const valorHNL = extraerNumero(inputHNL.value);
+            
+            if (valorUSD > 0) {
+                // Intercambiar: poner USD en HNL
+                inputHNL.value = formatNumber(valorUSD, 2);
+                const nuevoUSD = hnlToUsd(valorUSD);
+                inputUSD.value = formatNumber(nuevoUSD, 2);
+            } else if (valorHNL > 0) {
+                // Si solo hay HNL
+                inputUSD.value = formatNumber(valorHNL, 2);
+                const nuevoHNL = usdToHnl(valorHNL);
+                inputHNL.value = formatNumber(nuevoHNL, 2);
             }
         });
     }
